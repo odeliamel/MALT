@@ -18,7 +18,6 @@ from utils import to_one_hot
 
 
 def fast_find_matrix_around_image(images, targets, inxs, model, num_classes=1000, batch_size=50):
-    print("find matrix")
     images_repeated = torch.repeat_interleave(images.detach().clone().cpu(), inxs.shape[1], dim=0).detach()
 
     eye = to_one_hot(inxs, num_classes=num_classes)
@@ -35,7 +34,6 @@ def fast_find_matrix_around_image(images, targets, inxs, model, num_classes=1000
 
 
 def batch_gradient_w_loss(model, input, backward_var, batch_size=50):
-    print("batch_gradient_w_loss")
     grads = torch.tensor([])
     start = 0
     while start < input.shape[0]:
@@ -59,8 +57,7 @@ def batch_gradient_w_loss(model, input, backward_var, batch_size=50):
 
 
 def get_class_rank(x, next_topk_inxs, ord, linmatrix, srcoutput, srcclass, type=torch.float):
-    print("get_class_rank")
-    epsilon_matrix = torch.zeros((x.shape[0], next_topk_inxs.shape[-1]), dtype=type)#.cuda()
+    epsilon_matrix = torch.zeros((x.shape[0], next_topk_inxs.shape[-1]), dtype=type)
 
     src_classes_scores = srcoutput[range(srcoutput.shape[0]), srcclass.view(-1)].unsqueeze(1)
     score_diffs = torch.repeat_interleave(src_classes_scores, next_topk_inxs.shape[-1], dim=1) - \
@@ -68,10 +65,10 @@ def get_class_rank(x, next_topk_inxs, ord, linmatrix, srcoutput, srcclass, type=
     matrix_raw_diffs = linmatrix#.cuda()
 
     if ord == 2:
-        matrix_raw_diff_norms = torch.norm(matrix_raw_diffs, p=2, dim=2)#.unsqueeze(0)
+        matrix_raw_diff_norms = torch.norm(matrix_raw_diffs, p=2, dim=2)
 
     if ord == np.inf:
-        matrix_raw_diff_norms = torch.norm(matrix_raw_diffs, p=1, dim=2)#.unsqueeze(0)
+        matrix_raw_diff_norms = torch.norm(matrix_raw_diffs, p=1, dim=2)
 
     non_zero_row_mask = (matrix_raw_diff_norms != 0)
 
@@ -79,7 +76,7 @@ def get_class_rank(x, next_topk_inxs, ord, linmatrix, srcoutput, srcclass, type=
         epsilon_matrix[non_zero_row_mask] = \
             score_diffs[non_zero_row_mask].cpu() / ((matrix_raw_diff_norms[non_zero_row_mask]).cpu())
 
-    all_classes_matrix = np.inf * torch.ones(x.shape[0], srcoutput.shape[-1])#.cuda()
+    all_classes_matrix = np.inf * torch.ones(x.shape[0], srcoutput.shape[-1])
     all_classes_matrix[torch.arange(x.shape[0]).unsqueeze(-1), next_topk_inxs] = epsilon_matrix
     return all_classes_matrix
 
