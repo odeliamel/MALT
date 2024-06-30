@@ -43,7 +43,7 @@ class MALTAttack:
         condition = lambda classification, t: classification == t
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         total_failed_attacks = torch.ones(x_orig.shape[0], device=device, dtype=torch.bool)
-
+        total_adv = torch.zeros_like(x_orig, dtype=torch.float).cpu()
         inc_failed_attacks_total = torch.tensor([]).cuda()
         n_batches = int(np.ceil(x_orig.shape[0] / batch_size))
 
@@ -60,6 +60,7 @@ class MALTAttack:
                 X_adv, batch_targets, inc_failed_attacks = \
                     self.attack_batch(model, data[current_to_improve], target[current_to_improve],
                                       batch_size=batch_size)
+                total_adv[bstart:bend][current_to_improve] = X_adv.cpu()
 
                 inc_failed_attacks_total = torch.cat((inc_failed_attacks_total, inc_failed_attacks), dim=1)
                 acc_each = condition(model(X_adv).data.max(1)[1], batch_targets).cuda()
@@ -76,4 +77,4 @@ class MALTAttack:
             logger.info(f"Attack success rate: {asr}")
             logger.info(f"(# of attacks failed for each iteration: {inc_failed_sums})")
 
-        return asr
+        return total_adv, asr

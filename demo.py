@@ -1,6 +1,13 @@
 import argparse
 import logging
+import os
 
+# from attacks.auto_pgd import APGD
+from adv_lib.attacks.auto_pgd import apgd
+
+from utils import log_success_indices
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 import numpy as np
 import torch
@@ -24,7 +31,7 @@ parser.add_argument('--dataset', default="imagenet")
 parser.add_argument('--threat_model', default="Linf")
 parser.add_argument('--model_name', default="Liu2023Comprehensive_Swin-L")
 parser.add_argument('--data_dir', default="/net/mraid11/export/vision/datasets/ImageNet")
-parser.add_argument('--batch_size', type=int, default="20")
+parser.add_argument('--batch_size', type=int, default="10")
 
 parser.add_argument('--model_dir', default="./models")
 parser.add_argument('--eps', type=float, default="0.01568627450980392")
@@ -49,26 +56,22 @@ model = load_model(model_name=args.model_name,
 
 
 model = model.to(args.device)
+# model = nn.DataParallel(model)
 
 
-class APGDTargeted:
-    def __init__(self):
-        self.targeted = True
-        self.base_attack = APGDAttack_targeted(model, n_restarts=1, n_iter=100, verbose=False,
-                                          eps=args.eps, norm='Linf', eot_iter=1, rho=.75, seed=args.seed,
-                                          device=args.device)
-
-    def attack(self, model, x_orig, y):
-        self.base_attack.init_hyperparam(x_orig)
-        with torch.no_grad():
-            output = model(x_orig)
-        model.zero_grad()
-        self.base_attack.y_target = y.detach().clone()
-        y_new = output.max(1)[1].detach().clone().long().to(args.device)
-        best_curr, acc_curr, loss_curr, adv_curr = self.base_attack.attack_single_run(x_orig, y_new)
-        return adv_curr
+# Since the original targeted APGD perturb function is not a targeted attack - it chooses top 9 targets.
+# we use jeromerony's implementation to targeted APGD: adversarial-library
+# (from https://github.com/jeromerony/adversarial-library.git)
+# This attack function implements a simple targeted attack towards target y.
 
 
-malt_attack = MALTAttack(attack_func=APGDTargeted().attack, k=9, norm=np.inf, testk=100)
+base_attack = lambda m, x_orig, y: apgd(model=m, inputs=x_orig, labels=y,
+                                        eps=args.eps, norm=np.inf, targeted=True)
 
-malt_attack.test_w_data(model, x_orig=clean_x_test, y_orig=clean_y_test, batch_size=args.batch_size, logger=logger)
+malt_attack = MALTAttack(attack_func=base_attack, k=9, norm=np.inf, testk=100)
+
+x_adv, _ = malt_attack.test_w_data(model, x_orig=clean_x_test, y_orig=clean_y_test,
+                                   batch_size=args.batch_size, logger=logger)
+
+log_success_indices(clean_x_test=clean_x_test, clean_y_test=clean_y_test,
+                    device=args.device, logger=logger, model=model, x_adv=x_adv)
