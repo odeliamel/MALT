@@ -63,6 +63,7 @@ model = model.to(args.device)
 # we use jeromerony's implementation to targeted APGD: adversarial-library
 # (from https://github.com/jeromerony/adversarial-library.git)
 # This attack function implements a simple targeted attack towards target y.
+#
 
 
 base_attack = lambda m, x_orig, y: apgd(model=m, inputs=x_orig, labels=y,

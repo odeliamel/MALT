@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from targeting import get_k_best_target_classes
+from datetime import datetime
 
 
 class MALTAttack:
@@ -53,7 +54,7 @@ class MALTAttack:
             data, target = x_orig[bstart:bend].clone().to(device), y_orig[bstart:bend].clone().to(device)
             for c in range(num_restarts):
                 if logger is not None:
-                    logger.info(f"restart number {c}, batch number {batch_idx}, (start {bstart}, end {bend})")
+                    logger.info(f"{datetime.now()}: restart number {c}, batch number {batch_idx}, (start {bstart}, end {bend})")
 
                 current_to_improve = total_failed_attacks[bstart:bend].clone().type(torch.bool)
 
