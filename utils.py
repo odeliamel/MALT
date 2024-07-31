@@ -16,7 +16,7 @@ def to_one_hot(y, num_classes=10):
     return y_one_hot
 
 
-def log_success_indices(clean_x_test, clean_y_test, device, logger, model, x_adv):
+def log_success_indices(clean_x_test, clean_y_test, device, logger, model, x_adv, wandb):
     a_list = []
     batch_size = 1
     with torch.no_grad():
@@ -39,3 +39,9 @@ def log_success_indices(clean_x_test, clean_y_test, device, logger, model, x_adv
     logger.info(f"attack succeeded for indices {a_list}")
     asr = len(a_list) / clean_x_test.shape[0]
     logger.info(f"ASR: {asr}, RA: {1 - asr}")
+    wandb.log({"ASR": asr, "RA": 1-asr, "success_indices": a_list})
+    table = wandb.Table(data=a_list, columns=["List of successfully attacked indices"])
+    wandb.log({"successful indices": table})
+
+
+
